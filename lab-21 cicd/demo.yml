@@ -1,0 +1,119 @@
+---
+- hosts: 192.168.100.151
+  become: yes
+  tasks:
+
+    - name: Install Nginx
+      dnf: 
+        name: nginx
+        state: latest
+
+    - name: Start Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Copy HTML files for website
+      copy:
+        src: index.html
+        dest: /usr/share/nginx/html/index.html
+        mode: 0644
+
+- hosts: 192.168.100.152
+  become: yes
+  tasks:
+  
+    - name: Install Node.js and npm
+      dnf:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - nodejs
+        - npm
+
+    - name: Create a directory for the Node.js app
+      file:
+        path: nodeapp
+        state: directory
+
+    - name: Stop Node.js app using pm2 (forcefully)
+      command: "/usr/local/bin/pm2 stop my-node-app --force"
+      args:
+        chdir: nodeapp
+      ignore_errors: yes  # Ignore errors if the process is not running
+
+    - name: Install npm packages
+      command: "npm install {{ item }}"
+      args:
+        chdir: nodeapp
+      with_items:
+        - express
+        - body-parser
+
+    - name: Copy Node.js app code to the server
+      copy:
+        content: |
+          // app.js
+          const express = require('express');
+          const bodyParser = require('body-parser');
+
+          const app = express();
+          const port = 3000;
+
+          // Parse incoming requests with JSON payloads
+          app.use(bodyParser.json());
+
+          // Respond to GET requests with "Hello, World!"
+          app.get('/', (req, res) => {
+            res.send('Hello, World!');
+          });
+
+          // Listen on port 3000
+          app.listen(port, () => {
+            console.log(`Server is running on http://192.168.100.153:${port}`);
+          });
+        dest: nodeapp/app.js
+        mode: 0644
+
+    - name: installing nginx
+      shell: dnf -y install nginx
+
+    - name: Copy sample Node.js web page
+      copy:
+        src: index.html
+        dest: nodeapp/index.html
+        mode: 0644
+
+    - name: Create Nginx configuration for Node.js app
+      template:
+        src: "templates/nginx_config.j2"
+        dest: "/etc/nginx/conf.d/node.conf"
+      notify: restart nginx
+    - name: copy package.jon
+      copy:
+        src: package.json
+        dest: nodeapp/package.json
+        mode: 0644
+
+    - name: Install pm2
+      command: "npm install -g pm2"
+      args:
+        creates: /usr/bin/pm2  # This checks if pm2 is already installed
+
+    - name: Start Node.js app on custom IP and port
+      shell: "/usr/local/bin/pm2 start npm --name 'my-node-app' -- start"
+      args:
+        chdir: nodeapp
+        
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+      
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+...

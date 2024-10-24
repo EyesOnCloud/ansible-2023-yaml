@@ -1,0 +1,7 @@
+- hosts: eoc-node1
+  become: yes
+  tasks:
+    - name: touch a file
+      file:
+        path: /tmp/foo
+        state: touch

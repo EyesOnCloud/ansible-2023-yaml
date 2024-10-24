@@ -1,0 +1,7 @@
+- hosts: webservers
+  become: yes
+  tasks:
+    - name: installing httpd package
+      yum:
+        name: httpd
+        state: present

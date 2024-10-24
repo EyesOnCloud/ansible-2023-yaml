@@ -1,0 +1,30 @@
+---
+- name: Install LAMP Stack
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install Apache
+      yum:
+        name: httpd
+        state: present
+    - name: Enable and start Apache service
+      service:
+        name: httpd
+        enabled: yes
+        state: started
+    - name: Install MySQL Community edition
+      shell: dnf -y install  mysql-server --allowerasing
+    - name: Install PHP and PHP modules
+      yum:
+        name:
+          - php
+          - php-mysqlnd
+        state: present
+    - name: Copy your PHP file to /var/www/html
+      copy:
+        src: /home/admin/index.html
+        dest: /var/www/html/index.html
+    - name: Reload Apache after copying the file
+      service:
+        name: httpd
+        state: reloaded

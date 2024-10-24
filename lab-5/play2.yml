@@ -1,0 +1,16 @@
+- hosts: eoc-node2
+  become: yes
+  tasks:
+    - name: installing nginx server
+      yum:
+        name: nginx
+        state: latest
+    - name: enabling and startig the service
+      service:
+        name: nginx
+        enabled: true
+        state: started
+    - name: write the nginx config file
+      copy:
+        content: "Implementing Multiple Plays! \n"
+        dest: /usr/share/nginx/html/index.html
